@@ -1,48 +1,53 @@
 # Compilador Algebraico
 
-Un compilador/intérprete de expresiones algebraicas escrito en C# que evalúa operaciones matemáticas utilizando análisis léxico y sintáctico.
+Un compilador/interprete de expresiones algebraicas escrito en C# que evalua operaciones matematicas utilizando analisis lexico y sintactico.
 
-## Descripción
+## Descripcion
 
-Este proyecto implementa un compilador algebraico que puede analizar y evaluar expresiones matemáticas. Utiliza técnicas de compiladores como análisis léxico (scanner) y análisis sintáctico descendente recursivo (parser) para procesar las expresiones.
+Este proyecto implementa un compilador algebraico que analiza y evalua expresiones matematicas. Utiliza tecnicas de compiladores como analisis lexico (scanner) y analisis sintactico descendente recursivo (parser) para procesar las expresiones.
 
-## Características
+## Caracteristicas
 
-- ✨ Evaluación de expresiones matemáticas
-- ➕ Operaciones soportadas: suma, resta, multiplicación y división
-- 🔢 Soporte para números enteros y decimales
-- 📐 Manejo de paréntesis para agrupar operaciones
-- ⚡ Análisis sintáctico descendente recursivo
-- 🛡️ Detección de errores léxicos y sintácticos
+- Evaluacion de expresiones matematicas
+- Operaciones soportadas: suma (`+`), resta (`-`), multiplicacion (`*`) y division (`/`)
+- Soporte para numeros enteros
+- Manejo de parentesis para agrupar operaciones
+- Soporte para operador unario negativo (e.g. `-5 + 10`)
+- Analisis sintactico descendente recursivo
+- Aritmetica de doble precision (`double`) en los calculos internos
+- Deteccion de errores lexicos y sintacticos
 
 ## Requisitos
 
-- .NET Core 3.1 o superior
+- [.NET Core 3.1](https://dotnet.microsoft.com/download/dotnet/3.1) o superior
 - Sistema operativo compatible con .NET Core (Windows, Linux, macOS)
 
-## Instalación
+## Instalacion
 
 1. Clona el repositorio:
+
 ```bash
-git clone <url-del-repositorio>
+git clone https://github.com/esaban17/compiladoralgebraico.git
 cd CompiladorAlgebraico
 ```
 
 2. Compila el proyecto:
+
 ```bash
 dotnet build
 ```
 
 3. Ejecuta el proyecto:
+
 ```bash
 dotnet run --project CompiladorAlgebraico
 ```
 
 ## Uso
 
-Al ejecutar el programa, se te solicitará ingresar una expresión matemática. El programa la evaluará y mostrará el resultado.
+Al ejecutar el programa, se solicita ingresar una expresion matematica. El programa la evalua y muestra el resultado.
 
-### Ejemplos de expresiones válidas:
+### Ejemplos de expresiones validas
 
 ```
 2 + 3 * 4
@@ -53,9 +58,10 @@ Al ejecutar el programa, se te solicitará ingresar una expresión matemática. 
 (2 + 3) * (4 - 1)
 ```
 
-### Ejemplo de ejecución:
+### Ejemplo de ejecucion
 
 ```
+Ingrese la expresion:
 > 2 + 3 * 4
 
 ----------------------------
@@ -65,97 +71,99 @@ El resultado es: 14
 
 ## Estructura del Proyecto
 
-El proyecto está organizado en los siguientes componentes:
+```
+CompiladorAlgebraico/
+├── CompiladorAlgebraico.sln
+├── README.md
+└── CompiladorAlgebraico/
+    ├── CompiladorAlgebraico.csproj
+    ├── Program.cs
+    ├── Scanner.cs
+    ├── Parser.cs
+    ├── Token.cs
+    └── TokenType.cs
+```
 
-### `Program.cs`
-Punto de entrada de la aplicación. Lee la expresión del usuario e invoca al parser para evaluarla.
+### Componentes
 
-### `Scanner.cs`
-Analizador léxico (lexer) que:
-- Convierte la cadena de entrada en tokens
-- Reconoce números, operadores y paréntesis
-- Maneja espacios en blanco
-- Detecta errores léxicos
+| Archivo | Descripcion |
+|---------|-------------|
+| **Program.cs** | Punto de entrada. Lee la expresion del usuario e invoca al parser para evaluarla. |
+| **Scanner.cs** | Analizador lexico que convierte la cadena de entrada en tokens. Reconoce numeros enteros, operadores y parentesis. Detecta errores lexicos. |
+| **Parser.cs** | Analizador sintactico descendente recursivo. Evalua las expresiones respetando la precedencia de operadores mediante las funciones `E()`, `EPrime()`, `T()`, `TPrime()`, `F()` y `R()`. |
+| **Token.cs** | Clase que representa un token con su tipo (`Tag`) y valor (`Value`). |
+| **TokenType.cs** | Enumeracion de tipos de tokens soportados. |
 
-### `Parser.cs`
-Analizador sintáctico que:
-- Implementa una gramática formal usando análisis descendente recursivo
-- Evalúa las expresiones respetando la precedencia de operadores
-- Funciones gramaticales: `E()`, `EPrime()`, `T()`, `TPrime()`, `F()`, `R()`
-- Detecta errores sintácticos
+### Tipos de Tokens
 
-### `Token.cs`
-Representa un token con su tipo y valor.
+| Token | Simbolo | Descripcion |
+|-------|---------|-------------|
+| `Number` | `0-9` | Numeros enteros |
+| `Plus` | `+` | Suma |
+| `Minus` | `-` | Resta |
+| `Mult` | `*` | Multiplicacion |
+| `Div` | `/` | Division |
+| `LParen` | `(` | Parentesis izquierdo |
+| `RParen` | `)` | Parentesis derecho |
+| `EOF` | — | Fin de entrada |
 
-### `TokenType.cs`
-Enumeración de los tipos de tokens soportados:
-- `Number`: Números
-- `Plus`: Operador suma (+)
-- `Minus`: Operador resta (-)
-- `Mult`: Operador multiplicación (*)
-- `Div`: Operador división (/)
-- `LParen`: Paréntesis izquierdo (()
-- `RParen`: Paréntesis derecho ())
-- `EOF`: Fin de archivo
+## Gramatica
 
-## Gramática
-
-El parser implementa la siguiente gramática que respeta la precedencia de operadores:
+El parser implementa la siguiente gramatica libre de contexto que respeta la precedencia de operadores:
 
 ```
-E  → T E'
-E' → + T E' | - T E' | ε
-T  → F T'
-T' → * F T' | / F T' | ε
-F  → - R | R
-R  → number | ( E )
+E  -> T E'
+E' -> + T E' | - T E' | e
+T  -> F T'
+T' -> * F T' | / F T' | e
+F  -> - R | R
+R  -> number | ( E )
 ```
 
 Donde:
-- **E**: Expresión (maneja suma y resta)
-- **T**: Término (maneja multiplicación y división)
-- **F**: Factor (maneja operadores unarios)
-- **R**: Elemento básico (números o expresiones entre paréntesis)
+
+- **E**: Expresion (maneja suma y resta)
+- **T**: Termino (maneja multiplicacion y division)
+- **F**: Factor (maneja operador unario negativo)
+- **R**: Elemento basico (numeros o expresiones entre parentesis)
+- **e**: Epsilon (cadena vacia)
 
 ## Manejo de Errores
 
 El compilador detecta y reporta dos tipos de errores:
 
-1. **Errores Léxicos**: Caracteres no reconocidos en la entrada
-   - Mensaje: "Lex Analyzer Error"
+1. **Errores Lexicos** — Caracteres no reconocidos en la entrada.
+   - Mensaje: `Lex Analyzer Error`
 
-2. **Errores Sintácticos**: Expresiones mal formadas
-   - Mensaje: "Syntactic Analyzer Error"
+2. **Errores Sintacticos** — Expresiones mal formadas (e.g. operadores consecutivos, parentesis sin cerrar).
+   - Mensaje: `Syntactic Analyzer Error`
 
-## Tecnologías Utilizadas
+## Tecnologias
 
 - **Lenguaje**: C#
 - **Framework**: .NET Core 3.1
-- **Paradigma**: Análisis descendente recursivo
-
-## Contribuciones
-
-Las contribuciones son bienvenidas. Si deseas mejorar el proyecto:
-
-1. Haz un fork del repositorio
-2. Crea una rama para tu feature (`git checkout -b feature/nueva-caracteristica`)
-3. Realiza tus cambios y commitea (`git commit -am 'Agregar nueva característica'`)
-4. Sube los cambios (`git push origin feature/nueva-caracteristica`)
-5. Abre un Pull Request
+- **Paradigma**: Analisis descendente recursivo
 
 ## Posibles Mejoras
 
-- [ ] Soporte para números decimales
-- [ ] Operaciones adicionales (potencia, módulo, etc.)
-- [ ] Funciones matemáticas (sin, cos, tan, sqrt, etc.)
+- [ ] Soporte para numeros decimales (e.g. `3.14`)
+- [ ] Operaciones adicionales (potencia, modulo)
+- [ ] Funciones matematicas (`sin`, `cos`, `tan`, `sqrt`)
 - [ ] Variables y asignaciones
 - [ ] Modo interactivo (REPL)
-- [ ] Mensajes de error más descriptivos
+- [ ] Mensajes de error mas descriptivos con posicion del error
+- [ ] Tests unitarios
+
+## Contribuciones
+
+Las contribuciones son bienvenidas. Para contribuir:
+
+1. Haz un fork del repositorio
+2. Crea una rama para tu feature (`git checkout -b feature/nueva-caracteristica`)
+3. Realiza tus cambios y commitea (`git commit -m 'Agregar nueva caracteristica'`)
+4. Sube los cambios (`git push origin feature/nueva-caracteristica`)
+5. Abre un Pull Request
 
 ## Licencia
 
-Este proyecto es de código abierto y está disponible bajo los términos que el autor desee especificar.
-
-## Autor
-
-Proyecto desarrollado como parte del aprendizaje de técnicas de compiladores y análisis sintáctico.
+Este proyecto es de codigo abierto y esta disponible bajo los terminos que el autor desee especificar.
