@@ -1,124 +1,84 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Text.RegularExpressions;
+using System;
 
 namespace CompiladorAlgebraico
 {
-    public class Scanner
+    /// <summary>
+    /// Analizador lexico: recorre la entrada una sola vez y la convierte en tokens.
+    /// Una vez consumida la entrada devuelve <see cref="TokenType.EOF"/> de forma
+    /// indefinida, de modo que el parser puede consultar el token final sin riesgo.
+    /// </summary>
+    public sealed class Scanner
     {
-        private string _operation = "";
-        private int _index = 0;
-        private int _state = 0;
+        private readonly string _input;
+        private int _index;
 
-        public Scanner(string operation)
+        public Scanner(string input)
         {
-            _operation = operation + (char)TokenType.EOF;
+            _input = input ?? string.Empty;
             _index = 0;
-            _state = 0;
         }
 
+        /// <summary>Devuelve el siguiente token de la entrada.</summary>
+        /// <exception cref="LexicalException">La entrada contiene un caracter no reconocido.</exception>
         public Token GetToken()
         {
-            Token result = new Token() { Value = Convert.ToString((char)0) };
-            bool tokenFound = false;
-            var numberValidation = new Regex("^[0-9]+$");
-
-            while (!tokenFound)
+            while (_index < _input.Length && char.IsWhiteSpace(_input[_index]))
             {
-                char peek = _operation[_index];
-                char lookHead;
-
-                //Look a Head
-                if (_index < (_operation.Length - 1))
-                {
-                    lookHead = _operation[_index + 1];
-                }
-                else
-                {
-                    lookHead = (char)0;
-                }
-
-                //Whitespace Remove
-                while (char.IsWhiteSpace(peek))
-                {
-                    _index++;
-                    peek = _operation[_index];
-                    lookHead = _operation[_index + 1];
-                }
-
-                switch (_state)
-                {
-                    case 0:
-                        if (numberValidation.IsMatch(Convert.ToString(peek)))
-                        {
-                            result.Tag = TokenType.Number;
-                            result.Value = Convert.ToString(peek);
-                            if (!numberValidation.IsMatch(Convert.ToString(lookHead)))
-                            {
-                                tokenFound = true;
-                            }
-                            else
-                            {
-                                _state = 1;
-                            }
-                        }
-
-                        switch (peek)
-                        {
-                            case (char)TokenType.LParen:
-                            case (char)TokenType.RParen:
-                            case (char)TokenType.Plus:
-                            case (char)TokenType.Minus:
-                            case (char)TokenType.Mult:
-                            case (char)TokenType.Div:
-                            case (char)TokenType.EOF:
-                                tokenFound = true;
-                                result.Tag = (TokenType)peek;
-                                break;
-                            default:
-                                break;
-                        }// SWITCH - peek
-                        break;
-                    case 1:
-                        if (numberValidation.IsMatch(Convert.ToString(peek)))
-                        {
-                            result.Value += Convert.ToString(peek);
-
-                            if (!numberValidation.IsMatch(Convert.ToString(lookHead)))
-                            {
-                                tokenFound = true;
-                            }
-                        }
-                        else
-                        {
-                            switch (peek)
-                            {
-                                case (char)TokenType.LParen:
-                                case (char)TokenType.RParen:
-                                case (char)TokenType.Plus:
-                                case (char)TokenType.Minus:
-                                case (char)TokenType.Mult:
-                                case (char)TokenType.Div:
-                                case (char)TokenType.EOF:
-                                    tokenFound = true;
-                                    result.Tag = (TokenType)peek;
-                                    result.Value = Convert.ToString(peek);
-                                    break;
-                                default:
-                                    throw new Exception("Lex Analyzer Error");
-                            }// SWITCH - peek
-                        }
-                        break;
-                    default:
-                        break;
-                }// SWITCH - state
                 _index++;
-            } // WHILE - tokenFound
-            _state = 0;
-            return result;
+            }
+
+            if (_index >= _input.Length)
+            {
+                return new Token(TokenType.EOF, string.Empty, _index);
+            }
+
+            int start = _index;
+            char peek = _input[_index];
+
+            if (char.IsDigit(peek) || peek == '.')
+            {
+                return ReadNumber(start);
+            }
+
+            _index++;
+            switch (peek)
+            {
+                case '+': return new Token(TokenType.Plus, "+", start);
+                case '-': return new Token(TokenType.Minus, "-", start);
+                case '*': return new Token(TokenType.Mult, "*", start);
+                case '/': return new Token(TokenType.Div, "/", start);
+                case '(': return new Token(TokenType.LParen, "(", start);
+                case ')': return new Token(TokenType.RParen, ")", start);
+                default:
+                    throw new LexicalException("caracter no reconocido '" + peek + "'", start);
+            }
         }
 
+        /// <summary>Consume un literal numerico: digitos, con parte decimal opcional.</summary>
+        private Token ReadNumber(int start)
+        {
+            while (_index < _input.Length && char.IsDigit(_input[_index]))
+            {
+                _index++;
+            }
 
+            if (_index < _input.Length && _input[_index] == '.')
+            {
+                int dot = _index;
+                _index++;
+
+                if (_index >= _input.Length || !char.IsDigit(_input[_index]))
+                {
+                    throw new LexicalException("se esperaban digitos despues del punto decimal", dot);
+                }
+
+                while (_index < _input.Length && char.IsDigit(_input[_index]))
+                {
+                    _index++;
+                }
+            }
+
+            return new Token(TokenType.Number, _input.Substring(start, _index - start), start);
+        }
     }
 }

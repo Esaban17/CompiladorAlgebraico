@@ -1,176 +1,166 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System.Globalization;
 
 namespace CompiladorAlgebraico
 {
-    class Parser
+    /// <summary>
+    /// Analizador sintactico descendente recursivo que evalua la expresion mientras la reconoce.
+    ///
+    /// Gramatica (los operadores binarios son asociativos por la izquierda):
+    ///
+    ///     E -> T (('+' | '-') T)*
+    ///     T -> F (('*' | '/') F)*
+    ///     F -> '-' F | R
+    ///     R -> number | '(' E ')'
+    ///
+    /// La repeticion con <c>*</c> reemplaza a los no terminales E' y T' de la version
+    /// recursiva pura: acumular en un bucle es lo que garantiza la asociatividad por la
+    /// izquierda, de modo que <c>1 - 2 - 3</c> se agrupa como <c>(1 - 2) - 3</c>.
+    /// </summary>
+    public sealed class Parser
     {
-        Scanner _scanner;
-        Token _token;
-        double _operationResult = 0;
-        
+        private Scanner _scanner = new Scanner(string.Empty);
+        private Token _token = new Token(TokenType.EOF, string.Empty, 0);
+
+        /// <summary>Analiza y evalua una expresion algebraica.</summary>
+        /// <exception cref="LexicalException">La entrada contiene un caracter no reconocido.</exception>
+        /// <exception cref="SyntacticException">La expresion esta mal formada.</exception>
+        /// <exception cref="EvaluationException">La expresion es valida pero no se puede evaluar.</exception>
         public double Parse(string operation)
         {
-            _scanner = new Scanner(operation + (char)TokenType.EOF);
+            _scanner = new Scanner(operation);
             _token = _scanner.GetToken();
 
-            switch (_token.Tag)
+            if (_token.Tag == TokenType.EOF)
             {
-                case TokenType.Minus:
-                case TokenType.LParen:
-                case TokenType.Number:
-                    _operationResult = E();
-                    break;
-                default:
-                    break;
+                throw new SyntacticException("la expresion esta vacia", _token.Position);
             }
-            Match(TokenType.EOF);
 
-            return _operationResult;
+            double result = E();
+            Expect(TokenType.EOF);
+            return result;
         }
 
-        private int Match(TokenType tag)
+        /// <summary>Consume el token actual si coincide con <paramref name="tag"/>; si no, falla.</summary>
+        private Token Expect(TokenType tag)
         {
-            TokenType previousTag = tag;
-            int tokenValue = 0;
-            if (_token.Tag == tag)
+            if (_token.Tag != tag)
             {
-                if (_token.Tag == TokenType.Number)
-                {
-                    tokenValue = Convert.ToInt32(_token.Value);
-                }
-                _token = _scanner.GetToken();
-
-
-                if (previousTag == TokenType.Mult && previousTag == _token.Tag)
-                {
-                    throw new Exception("Syntactic Analyzer Error");
-                }
-                else if (previousTag == TokenType.Div && previousTag == _token.Tag)
-                {
-                    throw new Exception("Syntactic Analyzer Error");
-                }
-                else if (previousTag == TokenType.Plus && previousTag == _token.Tag)
-                {
-                    throw new Exception("Syntactic Analyzer Error");
-                }
-
-                return tokenValue;
+                throw new SyntacticException(
+                    "se esperaba " + Describe(tag) + " pero se encontro " + _token,
+                    _token.Position);
             }
-            else
-            {
-                throw new Exception("Syntactic Analyzer Error");
-            }
+
+            Token matched = _token;
+            _token = _scanner.GetToken();
+            return matched;
         }
 
+        /// <summary>E -> T (('+' | '-') T)*</summary>
         private double E()
         {
-            switch (_token.Tag)
+            double value = T();
+
+            while (_token.Tag == TokenType.Plus || _token.Tag == TokenType.Minus)
             {
-                case TokenType.Minus:
-                case TokenType.LParen:
-                case TokenType.Number:
-                    _operationResult = T() + EPrime();
-                    break;
-                default:
-                    _operationResult = 0;
-                    break;
+                TokenType op = _token.Tag;
+                Expect(op);
+                double right = T();
+                value = op == TokenType.Plus ? value + right : value - right;
             }
-            return _operationResult;
+
+            return value;
         }
 
-        private double EPrime()
-        {
-            switch (_token.Tag)
-            {
-                case TokenType.Minus:
-                    Match(TokenType.Minus);
-                    _operationResult = - (T() + EPrime());
-                    break;
-                case TokenType.Plus:
-                    Match(TokenType.Plus);
-                    _operationResult = T() + EPrime();
-                    break;
-                default:
-                    _operationResult = 0;
-                    break;
-            }
-            return _operationResult;
-        }
-
+        /// <summary>T -> F (('*' | '/') F)*</summary>
         private double T()
         {
-            switch (_token.Tag)
+            double value = F();
+
+            while (_token.Tag == TokenType.Mult || _token.Tag == TokenType.Div)
             {
-                case TokenType.Minus:
-                case TokenType.LParen:
-                case TokenType.Number:
-                    _operationResult = F() * TPrime();
-                    break;
-                default:
-                    _operationResult = 1;
-                    break;
+                TokenType op = _token.Tag;
+                int position = _token.Position;
+                Expect(op);
+                double right = F();
+
+                if (op == TokenType.Mult)
+                {
+                    value *= right;
+                }
+                else if (right == 0)
+                {
+                    throw new EvaluationException("division por cero", position);
+                }
+                else
+                {
+                    value /= right;
+                }
             }
-            return _operationResult;
+
+            return value;
         }
 
-        private double TPrime()
-        {
-            switch (_token.Tag)
-            {
-                case TokenType.Mult:
-                    Match(TokenType.Mult);
-                    _operationResult = (F() * TPrime());
-                    break;
-                case TokenType.Div:
-                    Match(TokenType.Div);
-                    _operationResult = (1 / (F() * (1 / TPrime())));
-                    break;
-                default:
-                    _operationResult = 1;
-                    break;
-            }
-            return _operationResult;
-        }
-
+        /// <summary>F -> '-' F | R</summary>
         private double F()
         {
-            switch (_token.Tag)
+            if (_token.Tag == TokenType.Minus)
             {
-                case TokenType.Minus:
-                    Match(TokenType.Minus);
-                    _operationResult = -R();
-                    break;
-                case TokenType.LParen:
-                case TokenType.Number:
-                    _operationResult = R();
-                    break;
-                default:
-                    _operationResult = 0;
-                    break;
+                Expect(TokenType.Minus);
+                return -F();
             }
-            return _operationResult;
+
+            return R();
         }
 
+        /// <summary>R -> number | '(' E ')'</summary>
         private double R()
         {
             switch (_token.Tag)
             {
                 case TokenType.Number:
-                    _operationResult = Match(TokenType.Number);
-                    break;
+                    return ToDouble(Expect(TokenType.Number));
+
                 case TokenType.LParen:
-                    Match(TokenType.LParen);
-                    _operationResult = E();
-                    Match(TokenType.RParen);
-                    break;
+                    Expect(TokenType.LParen);
+                    double inner = E();
+                    Expect(TokenType.RParen);
+                    return inner;
+
                 default:
-                    _operationResult = 0;
-                    break;
+                    throw new SyntacticException(
+                        "se esperaba un numero o '(' pero se encontro " + _token,
+                        _token.Position);
             }
-            return _operationResult;
         }
 
+        private static double ToDouble(Token number)
+        {
+            double value = double.Parse(number.Value, NumberStyles.Float, CultureInfo.InvariantCulture);
+
+            if (double.IsInfinity(value))
+            {
+                throw new EvaluationException(
+                    "el numero '" + number.Value + "' esta fuera del rango de double",
+                    number.Position);
+            }
+
+            return value;
+        }
+
+        private static string Describe(TokenType tag)
+        {
+            switch (tag)
+            {
+                case TokenType.Number: return "un numero";
+                case TokenType.Plus: return "'+'";
+                case TokenType.Minus: return "'-'";
+                case TokenType.Mult: return "'*'";
+                case TokenType.Div: return "'/'";
+                case TokenType.LParen: return "'('";
+                case TokenType.RParen: return "')'";
+                case TokenType.EOF: return "el fin de la expresion";
+                default: return tag.ToString();
+            }
+        }
     }
 }
